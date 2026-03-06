@@ -5,7 +5,7 @@ from math import radians, sin, cos, asin, sqrt
 @dataclass
 class Aircraft:
     "Charter aircraft with operating characteristics"
-    name: str; hourly_rate: float; fuel_capacity_gal: float; max_payload_lbs: float; fuel_burn_gph: float; cruise_ktas: float = 450; home_base: str = "KTEB"
+    name: str; hourly_rate: float; fuel_capacity_gal: float; max_payload_lbs: float; fuel_burn_gph: float; cruise_ktas: float = 450; home_base: str = "KBOS"
 
 @dataclass
 class FBO:
