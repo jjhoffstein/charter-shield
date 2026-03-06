@@ -7,12 +7,12 @@ from skyprice.risks.deadhead import DeadheadRisk
 from skyprice.engine import simulate, base_cost
 from skyprice.data import distance_nm
 
-def _phenom(home="KBOS"): return Aircraft("Phenom 300", 3200, 581, 8500, 150, 420, home)
+def _phenom(home="KBOS"): return Aircraft("Phenom 300", 3200, 581, 8500, 150, 420, home, max_pax=6)
 def _trip(orig="KBOS", dest="KMIA", ac=None): return Trip(orig, dest, date(2025,1,15), ac or _phenom(), 2, 100, distance_nm(orig, dest))
 
 def test_cruise_ktas_used_in_base_cost():
-    fast = Aircraft("Phenom 300", 3200, 581, 8500, 150, 500, "KBOS")
-    slow = Aircraft("Phenom 300", 3200, 581, 8500, 150, 300, "KBOS")
+    fast = Aircraft("Phenom 300", 3200, 581, 8500, 150, 500, "KBOS", max_pax=6)
+    slow = Aircraft("Phenom 300", 3200, 581, 8500, 150, 300, "KBOS", max_pax=6)
     t_fast = Trip("KBOS", "KMIA", date(2025,1,15), fast, 2, 100, 1095.0)
     t_slow = Trip("KBOS", "KMIA", date(2025,1,15), slow, 2, 100, 1095.0)
     assert base_cost(t_fast) < base_cost(t_slow)
@@ -34,7 +34,7 @@ def test_weather_seasonal_multiplier_winter():
     zones = {"KBOS": "winter_heavy", "KMIA": "mild"}
     mults = {"winter_heavy": [2.5,2.5,1.5,1.5,0.8,0.8,0.7,0.7,0.8,0.8,2.0,2.0], "mild": [0.8]*12}
     w = WeatherRisk(delay_prob=0.20, mean_delay_hrs=1.0, delay_std=0.1, seasonal_multipliers=mults, airport_zones=zones)
-    t_jan = _trip(); t_jan = Trip(t_jan.origin, t_jan.destination, date(2025,1,15), t_jan.aircraft, t_jan.pax_count, t_jan.cargo_weight_lbs, t_jan.distance_nm)
+    t_jan = _trip()
     t_jul = Trip(t_jan.origin, t_jan.destination, date(2025,7,15), t_jan.aircraft, t_jan.pax_count, t_jan.cargo_weight_lbs, t_jan.distance_nm)
     assert w._effective_delay_prob(t_jan) > w._effective_delay_prob(t_jul)
 

@@ -8,8 +8,8 @@ from skyprice.risks.deadhead import DeadheadRisk
 from skyprice.engine import simulate
 
 def _make_trip():
-    ac = Aircraft("Gulfstream G-IV", 8500, 4370, 24000, 280)
-    return Trip("KBOS", "KMIA", date(2026, 11, 15), ac, 45, 13000, 1095.0)
+    ac = Aircraft("Gulfstream G-IV", 8500, 4370, 24000, 280, 480, "KMIA", max_pax=12)
+    return Trip("KBOS", "KMIA", date(2026, 11, 15), ac, 8, 800, 1095.0)
 
 def test_simulate_deterministic():
     t = _make_trip()
@@ -33,3 +33,9 @@ def test_simulate_percentiles_ordered():
     t = _make_trip()
     r = simulate(t, [FuelRisk(), WeatherRisk(), FBOEventRisk(), DeadheadRisk()])
     assert r.percentiles["p50"] <= r.percentiles["p75"] <= r.percentiles["p90"] <= r.percentiles["p95"] <= r.percentiles["p99"]
+
+def test_pax_validation():
+    ac = Aircraft("Phenom 300", 3200, 581, 8500, 150, 420, "KBOS", max_pax=6)
+    t = Trip("KBOS", "KMIA", date(2026, 1, 1), ac, 9, 200, 1095.0)
+    try: simulate(t, [FuelRisk()]); assert False, "should have raised"
+    except ValueError as e: assert "pax" in str(e)

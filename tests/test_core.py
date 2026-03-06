@@ -9,11 +9,11 @@ def test_haversine_zero():
     assert haversine_nm(0, 0, 0, 0) == 0.0
 
 def test_aircraft():
-    ac = Aircraft("Test", 8500, 4370, 24000, 280)
+    ac = Aircraft("Test", 8500, 4370, 24000, 280, 480, "KBOS", max_pax=12)
     assert ac.hourly_rate == 8500
 
 def test_trip():
-    ac = Aircraft("Test", 8500, 4370, 24000, 280)
-    t = Trip("KBOS", "KMIA", date(2026, 1, 1), ac, 45, 13000, 1095.0)
+    ac = Aircraft("Gulfstream G-IV", 8500, 4370, 24000, 280, 480, "KBOS", max_pax=12)
+    t = Trip("KBOS", "KMIA", date(2026, 1, 1), ac, 8, 800, 1095.0)
     assert t.distance_nm == 1095.0
-    assert t.pax_count == 45
+    assert t.pax_count == 8

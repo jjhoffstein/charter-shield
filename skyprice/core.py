@@ -5,7 +5,9 @@ from math import radians, sin, cos, asin, sqrt
 @dataclass
 class Aircraft:
     "Charter aircraft with operating characteristics"
-    name: str; hourly_rate: float; fuel_capacity_gal: float; max_payload_lbs: float; fuel_burn_gph: float; cruise_ktas: float = 450; home_base: str = "KBOS"
+    name: str; hourly_rate: float; fuel_capacity_gal: float; max_payload_lbs: float; fuel_burn_gph: float; cruise_ktas: float = 450; home_base: str = "KBOS"; max_pax: int = 12
+
+    def max_range_nm(self): return (self.fuel_capacity_gal * 0.95 / self.fuel_burn_gph) * self.cruise_ktas
 
 @dataclass
 class FBO:

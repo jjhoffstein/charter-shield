@@ -4,20 +4,20 @@ from skyprice.core import Aircraft, Trip, PricingResult
 from skyprice.data import load_config, build_risk_modules
 from skyprice.engine import simulate
 
-AC_LOOKUP = {"Gulfstream G-IV": Aircraft("Gulfstream G-IV", 8500, 4370, 24000, 280, 480, "KMIA"),
-             "Citation XLS+": Aircraft("Citation XLS+", 4200, 931, 12500, 190, 430, "KORD"),
-             "Phenom 300": Aircraft("Phenom 300", 3200, 581, 8500, 150, 420, "KBOS")}
+AC_LOOKUP = {"Gulfstream G-IV": Aircraft("Gulfstream G-IV", 8500, 4370, 24000, 280, 480, "KMIA", max_pax=12),
+             "Citation XLS+":   Aircraft("Citation XLS+",   4200,  931, 12500, 190, 430, "KORD", max_pax=8),
+             "Phenom 300":       Aircraft("Phenom 300",      3200,  581,  8500, 150, 420, "KBOS", max_pax=6)}
 
 def backtest(hist_df, modules=None, cfg=None):
     "Run model against historical trips, return coverage stats"
     if cfg is None: cfg = load_config()
     if modules is None: modules = build_risk_modules(cfg)
-    n, seed, margin = cfg["simulation"]["n_iterations"], cfg["simulation"]["seed"], cfg["pricing"]["target_margin"]
+    n, base_seed, margin = cfg["simulation"]["n_iterations"], cfg["simulation"]["seed"], cfg["pricing"]["target_margin"]
     rows = []
-    for _, r in hist_df.iterrows():
+    for i, (_, r) in enumerate(hist_df.iterrows()):
         ac = AC_LOOKUP[r.aircraft]
         t = Trip(r.origin, r.destination, date.fromisoformat(str(r.date)), ac, r.pax, r.cargo_lbs, r.distance_nm)
-        res = simulate(t, modules, n=n, seed=seed, margin=margin)
+        res = simulate(t, modules, n=n, seed=base_seed + i, margin=margin)
         rows.append(dict(actual=r.actual_cost, quote=res.total, **res.percentiles))
     return pd.DataFrame(rows)
 
