@@ -24,6 +24,11 @@ def load_config(path="config.toml"):
     "Load configuration from TOML file"
     with open(path, "rb") as f: return tomllib.load(f)
 
+def airport_zones(airports_df=None):
+    "Build ICAO -> weather_zone lookup dict"
+    if airports_df is None: airports_df = load_airports()
+    return airports_df["weather_zone"].to_dict()
+
 def build_risk_modules(cfg=None):
     "Build risk modules from config"
     if cfg is None: cfg = load_config()
@@ -34,6 +39,7 @@ def build_risk_modules(cfg=None):
     fc, wc, ec, dc = cfg["fuel"], cfg["weather"], cfg["fbo_events"], cfg["deadhead"]
     return [
         FuelRisk(fc["base_price_per_gallon"], fc["volatility_pct"], tuple(fc["flowage_fee_range"]), tuple(fc["into_plane_fee_range"])),
-        WeatherRisk(wc["delay_prob"], wc["mean_delay_hrs"], wc["delay_std"]),
+        WeatherRisk(wc["delay_prob"], wc["mean_delay_hrs"], wc["delay_std"],
+                    seasonal_multipliers=wc.get("seasonal_multipliers"), airport_zones=airport_zones()),
         FBOEventRisk(ec["event_prob"]),
         DeadheadRisk(dc["sell_probability_default"])]
