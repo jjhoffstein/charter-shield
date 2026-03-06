@@ -5,7 +5,7 @@ from skyprice.risks.fuel import FuelRisk
 from skyprice.risks.weather import WeatherRisk
 from skyprice.risks.deadhead import DeadheadRisk
 from skyprice.engine import simulate, base_cost
-from skyprice.data import distance_nm
+from skyprice.data import distance_nm, generate_historical_trips
 
 def _phenom(home="KBOS"): return Aircraft("Phenom 300", 3200, 581, 8500, 150, 420, home, max_pax=6)
 def _trip(orig="KBOS", dest="KMIA", ac=None): return Trip(orig, dest, date(2025,1,15), ac or _phenom(), 2, 100, distance_nm(orig, dest))
@@ -46,3 +46,11 @@ def test_risk_distributions_populated():
 def test_risk_distributions_ordered():
     r = simulate(_trip(), [FuelRisk(), WeatherRisk(), DeadheadRisk()], n=1000)
     for v in r.risk_distributions.values(): assert v["p10"] <= v["mean"] or v["p10"] <= v["p90"]
+
+def test_generate_historical_trips():
+    ac_lookup = {"Phenom 300": _phenom()}
+    modules = [FuelRisk(), WeatherRisk(), DeadheadRisk()]
+    df = generate_historical_trips(ac_lookup, modules, n=6)
+    assert len(df) == 6
+    assert list(df.columns) == ["origin","destination","date","aircraft","pax","cargo_lbs","distance_nm","actual_cost"]
+    assert all(df.apply(lambda r: r.distance_nm <= ac_lookup[r.aircraft].max_range_nm(), axis=1))
