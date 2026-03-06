@@ -31,9 +31,9 @@ def build_risk_modules(cfg=None):
     from skyprice.risks.weather import WeatherRisk
     from skyprice.risks.fbo import FBOEventRisk
     from skyprice.risks.deadhead import DeadheadRisk
-    fc = cfg["fuel"]
+    fc, wc, ec, dc = cfg["fuel"], cfg["weather"], cfg["fbo_events"], cfg["deadhead"]
     return [
         FuelRisk(fc["base_price_per_gallon"], fc["volatility_pct"], tuple(fc["flowage_fee_range"]), tuple(fc["into_plane_fee_range"])),
-        WeatherRisk(delay_prob=0.15, mean_delay_hrs=1.0, delay_std=0.8),
-        FBOEventRisk(event_prob=0.20),
-        DeadheadRisk(sell_prob=cfg["deadhead"]["sell_probability_default"])]
+        WeatherRisk(wc["delay_prob"], wc["mean_delay_hrs"], wc["delay_std"]),
+        FBOEventRisk(ec["event_prob"]),
+        DeadheadRisk(dc["sell_probability_default"])]

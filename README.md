@@ -25,6 +25,11 @@ The engine runs 10,000 Monte Carlo simulations per trip, sampling from calibrate
 ### Risk Waterfall
 ![Risk Waterfall](data/results/risk_waterfall.png)
 
+### Model Calibration
+Backtested against 200 historical trips. The calibration plot shows predicted percentile vs observed coverage — dots on the diagonal = perfect calibration.
+
+![Calibration](data/results/calibration_comparison.png)
+
 ## Configuration
 
 All parameters are tunable via `config.toml` — no hardcoded values in the engine.
