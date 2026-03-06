@@ -1,6 +1,24 @@
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
+from skyprice.engine import base_cost
+from skyprice.data import load_config
+
+_RISK_LABELS = dict(FuelRisk="Fuel variance", WeatherRisk="Weather delays",
+    FBOEventRisk="FBO/ground handling", DeadheadRisk="Deadhead repositioning")
+
+def narrate(trip, res):
+    "Return plain-English pricing narrative for a charter quote"
+    cfg = load_config()
+    margin = cfg.get('margin', 0.12)
+    flight_hrs = trip.distance_nm / trip.aircraft.cruise_ktas
+    base = base_cost(trip)
+    parts = [f"Base flight: {flight_hrs:.1f} hrs at ${trip.aircraft.hourly_rate:,}/hr block rate = ${base:,.0f}."]
+    for name, mean in res.risk_premiums.items():
+        parts.append(f"{_RISK_LABELS.get(name, name)} adds ~${mean:,.0f} on average.")
+    parts.append(f"90th-percentile total cost: ${res.p90:,.0f}.")
+    parts.append(f"Final quote (p90 + {margin:.0%} margin): ${res.quote:,.0f}.")
+    return '\n'.join(parts)
 
 def plot_waterfall(result, title=None):
     "Waterfall chart with per-module p10-p90 uncertainty ranges"
