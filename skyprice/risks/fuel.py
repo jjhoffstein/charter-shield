@@ -9,7 +9,7 @@ class FuelRisk(RiskModule):
 
     def sample(self, trip, rng) -> float:
         "Sample fuel cost variance for a trip"
-        flight_hours = trip.distance_nm / 450
+        flight_hours = trip.distance_nm / trip.aircraft.cruise_ktas
         gallons = flight_hours * trip.aircraft.fuel_burn_gph
         spot_price = rng.lognormal(np.log(self.base_price), self.volatility)
         flowage = rng.uniform(*self.flowage_range)

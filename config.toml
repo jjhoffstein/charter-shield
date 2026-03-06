@@ -7,7 +7,8 @@ confidence_levels = [0.50, 0.75, 0.90, 0.95, 0.99]
 target_margin = 0.12
 
 [fuel]
-base_price_per_gallon = 6.50
+spot_price_fallback = 2.50
+fbo_markup_per_gallon = 3.75
 volatility_pct = 0.25
 flowage_fee_range = [0.10, 0.30]
 into_plane_fee_range = [1.25, 1.50]

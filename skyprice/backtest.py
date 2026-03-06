@@ -4,9 +4,9 @@ from skyprice.core import Aircraft, Trip, PricingResult
 from skyprice.data import load_config, build_risk_modules
 from skyprice.engine import simulate
 
-AC_LOOKUP = {"Gulfstream G-IV": Aircraft("Gulfstream G-IV", 8500, 4370, 24000, 280),
-             "Citation XLS+": Aircraft("Citation XLS+", 4200, 931, 12500, 190),
-             "Phenom 300": Aircraft("Phenom 300", 3200, 581, 8500, 150)}
+AC_LOOKUP = {"Gulfstream G-IV": Aircraft("Gulfstream G-IV", 8500, 4370, 24000, 280, 480, "KMIA"),
+             "Citation XLS+": Aircraft("Citation XLS+", 4200, 931, 12500, 190, 430, "KORD"),
+             "Phenom 300": Aircraft("Phenom 300", 3200, 581, 8500, 150, 420, "KBOS")}
 
 def backtest(hist_df, modules=None, cfg=None):
     "Run model against historical trips, return coverage stats"

@@ -5,7 +5,7 @@ from math import radians, sin, cos, asin, sqrt
 @dataclass
 class Aircraft:
     "Charter aircraft with operating characteristics"
-    name: str; hourly_rate: float; fuel_capacity_gal: float; max_payload_lbs: float; fuel_burn_gph: float
+    name: str; hourly_rate: float; fuel_capacity_gal: float; max_payload_lbs: float; fuel_burn_gph: float; cruise_ktas: float = 450; home_base: str = "KTEB"
 
 @dataclass
 class FBO:
@@ -20,7 +20,7 @@ class Trip:
 @dataclass
 class PricingResult:
     "Output of Monte Carlo pricing simulation"
-    base_cost: float; risk_premiums: dict; total: float; percentiles: dict; distribution: list
+    base_cost: float; risk_premiums: dict; total: float; percentiles: dict; distribution: list; risk_distributions: dict = None
 
 def haversine_nm(lat1, lon1, lat2, lon2):
     "Great-circle distance in nautical miles between two lat/lon points"
