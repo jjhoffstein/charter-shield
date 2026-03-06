@@ -26,9 +26,19 @@ def test_deadhead_uses_home_base():
 
 def test_fuel_risk_delta_centered_on_zero():
     rng = np.random.default_rng(42)
-    f = FuelRisk(base_price=6.25, volatility=0.01, flowage_range=(0.20,0.20), into_plane_range=(1.375,1.375))
-    samples = [f.sample(_trip(), rng) for _ in range(5000)]
-    assert abs(np.mean(samples)) < 50
+    f = FuelRisk(base_price=6.25, volatility=0.25, flowage_range=(0.10,0.30), into_plane_range=(1.25,1.50))
+    samples = [f.sample(_trip(), rng) for _ in range(20000)]
+    assert abs(np.mean(samples)) < 30, f"FuelRisk mean delta should be ~0, got {np.mean(samples):.1f}"
+
+def test_fuel_burn_volatility_increases_spread():
+    t = _trip()
+    rng1, rng2 = np.random.default_rng(42), np.random.default_rng(42)
+    calm = FuelRisk(base_price=6.25, volatility=0.25, burn_volatility=0.0)
+    stormy = FuelRisk(base_price=6.25, volatility=0.25, burn_volatility=0.10,
+                      airport_zones={"KBOS": "winter_heavy"}, seasonal_multipliers={"winter_heavy": [2.5]*12})
+    s_calm = [calm.sample(t, rng1) for _ in range(10000)]
+    s_stormy = [stormy.sample(t, rng2) for _ in range(10000)]
+    assert np.std(s_stormy) > np.std(s_calm), "Burn volatility should increase spread"
 
 def test_weather_seasonal_multiplier_winter():
     zones = {"KBOS": "winter_heavy", "KMIA": "mild"}
@@ -37,6 +47,22 @@ def test_weather_seasonal_multiplier_winter():
     t_jan = _trip()
     t_jul = Trip(t_jan.origin, t_jan.destination, date(2025,7,15), t_jan.aircraft, t_jan.pax_count, t_jan.cargo_weight_lbs, t_jan.distance_nm)
     assert w._effective_delay_prob(t_jan) > w._effective_delay_prob(t_jul)
+
+def test_deadhead_includes_fuel():
+    rng = np.random.default_rng(0)
+    dh = DeadheadRisk(sell_prob=0.0, fuel_price_per_gal=7.825)
+    t = _trip()
+    cost = dh.sample(t, rng)
+    repo_nm = distance_nm("KBOS", "KBOS") + distance_nm("KMIA", "KBOS")
+    hourly_only = (repo_nm / t.aircraft.cruise_ktas) * t.aircraft.hourly_rate
+    assert cost > hourly_only, "Deadhead cost should include fuel on top of hourly rate"
+
+def test_fbo_event_prob_returns_max():
+    from skyprice.risks.fbo import _event_prob
+    assert _event_prob(date(2025, 12, 27), 0.25) == 0.70
+    assert _event_prob(date(2025, 12, 25), 0.25) == 0.65
+    assert _event_prob(date(2026, 1, 1), 0.25) == 1.00
+    assert _event_prob(date(2025, 6, 10), 0.25) == 0.25
 
 def test_risk_distributions_populated():
     r = simulate(_trip(), [FuelRisk(), WeatherRisk(), DeadheadRisk()], n=1000)
