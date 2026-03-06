@@ -127,20 +127,35 @@ def plot_distribution(result, title="Charter Cost Distribution"):
     return fig
 
 def plot_seasonal_calendar(origin="KBOS", dest="KMIA", ac=None, pax=4, cargo=200, n=3000, seed=42):
-    "Stacked monthly quote chart with weather/FBO breakdown and event annotations"
+    "Stacked monthly quote chart sampling multiple dates per month for event coverage"
     from skyprice.backtest import AC_LOOKUP
     from skyprice.core import Trip
-    from skyprice.risks.fbo import EVENT_WINDOWS
+    from skyprice.risks.fbo import EVENT_WINDOWS, _event_prob
     from datetime import date
     if ac is None: ac = AC_LOOKUP["Phenom 300"]
     nm = distance_nm(origin, dest)
+    sample_days = [1, 8, 15, 22, 28]
     month_names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-    base_costs, weather_prems, fbo_prems, deadhead_prems = [], [], [], []
+    base_costs, weather_prems, fbo_prems, deadhead_prems, peak_events = [], [], [], [], []
+    mods = build_risk_modules()
     for m in range(1, 13):
-        t = Trip(origin, dest, date(2025, m, 15), ac, pax, cargo, nm)
-        res = simulate(t, build_risk_modules(), n=n, seed=seed)
-        base_costs.append(res.base_cost); weather_prems.append(res.risk_premiums["WeatherRisk"])
-        fbo_prems.append(res.risk_premiums["FBOEventRisk"]); deadhead_prems.append(res.risk_premiums["DeadheadRisk"])
+        bc_acc, wp_acc, fp_acc, dp_acc = [], [], [], []
+        best_prob, best_event = 0.25, None
+        for d in sample_days:
+            t = Trip(origin, dest, date(2025, m, d), ac, pax, cargo, nm)
+            res = simulate(t, mods, n=n, seed=seed)
+            bc_acc.append(res.base_cost); wp_acc.append(res.risk_premiums["WeatherRisk"])
+            fp_acc.append(res.risk_premiums["FBOEventRisk"]); dp_acc.append(res.risk_premiums["DeadheadRisk"])
+            ep = _event_prob(date(2025, m, d), 0.25)
+            if ep > best_prob: best_prob = ep
+        for start, end, prob, name in EVENT_WINDOWS:
+            for d in sample_days:
+                s = date(2025, *start)
+                e = date(2025, *end) if end[0] >= start[0] else date(2026, *end)
+                if s <= date(2025, m, d) <= e and prob >= best_prob: best_event = name
+        base_costs.append(np.mean(bc_acc)); weather_prems.append(np.mean(wp_acc))
+        fbo_prems.append(np.mean(fp_acc)); deadhead_prems.append(np.mean(dp_acc))
+        peak_events.append(best_event if best_prob > 0.25 else None)
     x, bc, dp, wp, fp = np.arange(12), np.array(base_costs), np.array(deadhead_prems), np.array(weather_prems), np.array(fbo_prems)
     totals = bc + dp + wp + fp
     fig, ax = plt.subplots(figsize=(13, 7))
@@ -148,12 +163,9 @@ def plot_seasonal_calendar(origin="KBOS", dest="KMIA", ac=None, pax=4, cargo=200
     ax.bar(x, dp, width=0.6, bottom=bc, color="#26A69A", edgecolor="white", label="Deadhead")
     ax.bar(x, wp, width=0.6, bottom=bc+dp, color="#FF9800", edgecolor="white", label="Weather")
     ax.bar(x, fp, width=0.6, bottom=bc+dp+wp, color="#AB47BC", edgecolor="white", label="FBO / Events")
-    baseline_fbo = np.median(fp)
-    event_by_month = {start[0]: name for start, end, prob, name in sorted(EVENT_WINDOWS, key=lambda e: e[2])}
-    for i, (total, fbo) in enumerate(zip(totals, fp)):
+    for i, (total, evt) in enumerate(zip(totals, peak_events)):
         ax.text(i, total + 150, f"${total/1000:.1f}k", ha="center", va="bottom", fontsize=8, fontweight="bold")
-        if fbo > baseline_fbo * 1.4:
-            ax.text(i, total + 900, event_by_month.get(i+1, ""), ha="center", va="bottom", fontsize=7, color="#6A1B9A", style="italic")
+        if evt: ax.text(i, total + 900, evt, ha="center", va="bottom", fontsize=7, color="#6A1B9A", style="italic")
     ax.set_xticks(x); ax.set_xticklabels(month_names, fontsize=11)
     ax.set_ylabel("Cost ($)", fontsize=11)
     ax.set_title(f"Seasonal Pricing Calendar  |  {origin}→{dest}  |  {ac.name}", fontsize=13, fontweight="bold")
