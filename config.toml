@@ -8,21 +8,21 @@ target_margin = 0.12
 
 [fuel]
 base_price_per_gallon = 6.50
-volatility_pct = 0.15
+volatility_pct = 0.25
 flowage_fee_range = [0.10, 0.30]
 into_plane_fee_range = [1.25, 1.50]
 
 [weather]
-delay_threshold_minutes = 15
-heavy_jet_hourly_rate = 10_000
-mid_jet_hourly_rate = 4_500
+delay_prob = 0.20
+mean_delay_hrs = 1.2
+delay_std = 0.9
 
 [fbo_events]
+event_prob = 0.25
 mega_fee_range = [10_000, 30_000]
 major_fee_range = [5_000, 15_000]
 local_fee_range = [1_000, 5_000]
 standard_fee_range = [60, 500]
 
 [deadhead]
-base_empty_leg_ratio = 0.40
-sell_probability_default = 0.35
+sell_probability_default = 0.30
