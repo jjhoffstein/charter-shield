@@ -8,11 +8,10 @@ class DeadheadRisk(RiskModule):
         self.sell_prob = sell_prob
 
     def sample(self, trip, rng) -> float:
-        "Sample deadhead cost — repo distance from home base, discounted by sell probability"
+        "Sample deadhead cost — repo distance from home base, zero if empty leg sells"
         if rng.random() < self.sell_prob: return 0.0
         home = trip.aircraft.home_base
         repo_nm = distance_nm(home, trip.origin) + distance_nm(trip.destination, home)
-        repo_hrs = repo_nm / trip.aircraft.cruise_ktas
-        return repo_hrs * trip.aircraft.hourly_rate * rng.uniform(0.5, 1.0)
+        return (repo_nm / trip.aircraft.cruise_ktas) * trip.aircraft.hourly_rate
 
     def describe(self) -> dict: return dict(sell_prob=self.sell_prob)
