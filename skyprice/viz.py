@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
-from skyprice.engine import base_cost, simulate
-from skyprice.data import load_config, build_risk_modules
+from skyprice.engine import simulate
+from skyprice.data import load_config, build_risk_modules, distance_nm
 
 _RISK_LABELS = dict(FuelRisk="Fuel variance", WeatherRisk="Weather delays",
     FBOEventRisk="FBO/ground handling", DeadheadRisk="Deadhead repositioning")
@@ -10,10 +10,9 @@ _RISK_LABELS = dict(FuelRisk="Fuel variance", WeatherRisk="Weather delays",
 def narrate(trip, res):
     "Return plain-English pricing narrative for a charter quote"
     cfg = load_config()
-    margin = cfg.get('margin', 0.12)
+    margin = cfg["pricing"]["target_margin"]
     flight_hrs = trip.distance_nm / trip.aircraft.cruise_ktas
-    base = base_cost(trip)
-    parts = [f"Base flight: {flight_hrs:.1f} hrs at ${trip.aircraft.hourly_rate:,}/hr block rate = ${base:,.0f}."]
+    parts = [f"Base flight: {flight_hrs:.1f} hrs at ${trip.aircraft.hourly_rate:,}/hr block rate = ${res.base_cost:,.0f}."]
     for name, mean in res.risk_premiums.items():
         parts.append(f"{_RISK_LABELS.get(name, name)} adds ~${mean:,.0f} on average.")
     parts.append(f"90th-percentile total cost: ${res.p90:,.0f}.")
@@ -22,11 +21,11 @@ def narrate(trip, res):
 
 def plot_fuel_sensitivity(trip, price_points=(2.50, 3.50, 4.50), n=10000, seed=42):
     "Bar chart of p90 quote vs jet-A spot price"
-    cfg = load_config()
-    quotes = []
-    for spot in price_points:
-        cfg["fuel"]["spot_price_fallback"] = spot
-        quotes.append(simulate(trip, build_risk_modules(cfg), n=n, seed=seed).quote)
+    base_cfg = load_config()
+    def _quote(spot):
+        cfg = {**base_cfg, "fuel": {**base_cfg["fuel"], "spot_price_fallback": spot}}
+        return simulate(trip, build_risk_modules(cfg), n=n, seed=seed).quote
+    quotes = [_quote(s) for s in price_points]
     fig, ax = plt.subplots(figsize=(8, 5))
     bars = ax.bar([f"${p:.2f}/gal" for p in price_points], quotes, color=["#4CAF50","#FF9800","#F44336"], width=0.5, edgecolor="white")
     for bar, q in zip(bars, quotes): ax.text(bar.get_x() + bar.get_width()/2, q + 50, f"${q:,.0f}", ha="center", va="bottom", fontsize=11, fontweight="bold")
@@ -35,6 +34,33 @@ def plot_fuel_sensitivity(trip, price_points=(2.50, 3.50, 4.50), n=10000, seed=4
     ax.set_ylim(min(quotes) * 0.97, max(quotes) * 1.03)
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x,_: f"${x:,.0f}"))
     ax.spines[["top","right"]].set_visible(False)
+    fig.tight_layout()
+    return fig
+
+def plot_fleet_comparison(origin="KBOS", dest="KMIA", travel_date=None, pax=4, cargo=200, n=10000, seed=42):
+    "Side-by-side p50/p90/quote comparison across all aircraft in AC_LOOKUP"
+    from skyprice.backtest import AC_LOOKUP
+    from skyprice.core import Trip
+    from datetime import date
+    if travel_date is None: travel_date = date(2025, 1, 15)
+    nm = distance_nm(origin, dest)
+    labels, p50s, p90s, quotes = [], [], [], []
+    for name, ac in AC_LOOKUP.items():
+        try:
+            trip = Trip(origin, dest, travel_date, ac, pax, cargo, nm)
+            res = simulate(trip, build_risk_modules(), n=n, seed=seed)
+            labels.append(name); p50s.append(res.percentiles["p50"]); p90s.append(res.p90); quotes.append(res.quote)
+        except ValueError: pass
+    x, w = np.arange(len(labels)), 0.25
+    fig, ax = plt.subplots(figsize=(10, 6))
+    for i, (vals, color, label) in enumerate(zip([p50s, p90s, quotes], ["#4CAF50","#FF9800","#2196F3"], ["p50","p90","Quote (p90+margin)"])):
+        bars = ax.bar(x + i*w, vals, w, color=color, edgecolor="white", alpha=0.9, label=label)
+        for bar, v in zip(bars, vals): ax.text(bar.get_x()+bar.get_width()/2, v+200, f"${v/1000:.1f}k", ha="center", va="bottom", fontsize=8, fontweight="bold")
+    ax.set_xticks(x + w); ax.set_xticklabels(labels, fontsize=11)
+    ax.set_ylabel("Cost ($)", fontsize=11)
+    ax.set_title(f"Fleet Cost Comparison  |  {origin}→{dest}", fontsize=13, fontweight="bold")
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x,_: f"${x:,.0f}"))
+    ax.legend(fontsize=10, frameon=False); ax.spines[["top","right"]].set_visible(False)
     fig.tight_layout()
     return fig
 
