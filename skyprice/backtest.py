@@ -16,7 +16,7 @@ def backtest(hist_df, modules=None, cfg=None):
     rows = []
     for _, r in hist_df.iterrows():
         ac = AC_LOOKUP[r.aircraft]
-        t = Trip(r.origin, r.destination, date.fromisoformat(r.date), ac, r.pax, r.cargo_lbs, r.distance_nm)
+        t = Trip(r.origin, r.destination, date.fromisoformat(str(r.date)), ac, r.pax, r.cargo_lbs, r.distance_nm)
         res = simulate(t, modules, n=n, seed=seed, margin=margin)
         rows.append(dict(actual=r.actual_cost, quote=res.total, **res.percentiles))
     return pd.DataFrame(rows)
