@@ -25,8 +25,9 @@ class FuelRisk(RiskModule):
         "Sample fuel cost variance for a trip"
         flight_hours = trip.distance_nm / trip.aircraft.cruise_ktas
         base_gallons = flight_hours * trip.aircraft.fuel_burn_gph
-        actual_gallons = base_gallons * rng.lognormal(0, self._burn_sigma(trip))
-        spot_price = rng.lognormal(np.log(self.base_price), self.volatility)
+        sigma_burn = self._burn_sigma(trip)
+        actual_gallons = base_gallons * rng.lognormal(-sigma_burn**2 / 2, sigma_burn)
+        spot_price = rng.lognormal(np.log(self.base_price) - self.volatility**2 / 2, self.volatility)
         flowage = rng.uniform(*self.flowage_range)
         into_plane = rng.uniform(*self.into_plane_range)
         actual_cost = actual_gallons * (spot_price + flowage + into_plane)
