@@ -24,6 +24,12 @@ class PricingResult:
     "Output of Monte Carlo pricing simulation"
     base_cost: float; risk_premiums: dict; total: float; percentiles: dict; distribution: list; risk_distributions: dict = None
 
+    @property
+    def p90(self): return self.percentiles["p90"]
+
+    @property
+    def quote(self): return self.total
+
 def haversine_nm(lat1, lon1, lat2, lon2):
     "Great-circle distance in nautical miles between two lat/lon points"
     lat1, lon1, lat2, lon2 = map(radians, (lat1, lon1, lat2, lon2))

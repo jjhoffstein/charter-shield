@@ -1,4 +1,5 @@
-import tomllib, pandas as pd
+import tomllib, pandas as pd, numpy as np
+from datetime import date
 from skyprice.core import haversine_nm
 
 _airports = None
@@ -56,9 +57,29 @@ def fetch_jeta_spot(api_key, fallback=2.50):
     "Fetch latest weekly jet-A spot price from EIA; returns fallback on failure"
     import httpx
     try:
-        r = httpx.get('https://api.eia.gov/v2/petroleum/pri/spt/data/',
-            params={'api_key': api_key, 'frequency': 'weekly', 'data[]': 'value',
-                    'facets[product][]': 'EPJK', 'sort[0][column]': 'period',
-                    'sort[0][direction]': 'desc', 'length': 1}, timeout=10.0)
-        return float(r.json()['response']['data'][0]['value'])
+        r = httpx.get("https://api.eia.gov/v2/petroleum/pri/spt/data/",
+            params={"api_key": api_key, "frequency": "weekly", "data[]": "value",
+                    "facets[product][]": "EPJK", "sort[0][column]": "period",
+                    "sort[0][direction]": "desc", "length": 1}, timeout=10.0)
+        return float(r.json()["response"]["data"][0]["value"])
     except Exception: return fallback
+
+def generate_historical_trips(ac_lookup, modules, n=200, seed=42):
+    "Generate synthetic historical trips with lognormal noise around p50 for backtesting"
+    from skyprice.core import Trip
+    from skyprice.engine import simulate
+    rng = np.random.default_rng(seed)
+    icaos = load_airports().index.tolist()
+    rows, per_ac = [], n // len(ac_lookup)
+    for name, ac in ac_lookup.items():
+        pairs = [(o, d) for o in icaos for d in icaos if o != d and distance_nm(o, d) <= ac.max_range_nm()]
+        for _ in range(per_ac):
+            o, d = pairs[rng.integers(len(pairs))]
+            dist = distance_nm(o, d)
+            pax = int(rng.integers(1, ac.max_pax + 1))
+            cargo = round(float(rng.uniform(0, 300)), 1)
+            dt = date(2024, int(rng.integers(1, 13)), int(rng.integers(1, 28)))
+            res = simulate(Trip(o, d, dt, ac, pax, cargo, dist), modules, n=1000, seed=int(rng.integers(1_000_000)))
+            actual = res.percentiles["p50"] * float(rng.lognormal(0, 0.15))
+            rows.append(dict(origin=o, destination=d, date=dt, aircraft=name, pax=pax, cargo_lbs=cargo, distance_nm=dist, actual_cost=round(actual, 2)))
+    return pd.DataFrame(rows)

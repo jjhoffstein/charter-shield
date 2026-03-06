@@ -9,16 +9,17 @@ AC_LOOKUP = {"Gulfstream G-IV": Aircraft("Gulfstream G-IV", 8500, 4370, 24000, 2
              "Phenom 300":       Aircraft("Phenom 300",      3200,  581,  8500, 150, 420, "KBOS", max_pax=6)}
 
 def backtest(hist_df, modules=None, cfg=None):
-    "Run model against historical trips, return coverage stats"
+    "Run model against historical trips, return coverage stats; skips range-invalid trips"
     if cfg is None: cfg = load_config()
     if modules is None: modules = build_risk_modules(cfg)
     n, base_seed, margin = cfg["simulation"]["n_iterations"], cfg["simulation"]["seed"], cfg["pricing"]["target_margin"]
     rows = []
     for i, (_, r) in enumerate(hist_df.iterrows()):
         ac = AC_LOOKUP[r.aircraft]
+        if r.distance_nm > ac.max_range_nm(): continue
         t = Trip(r.origin, r.destination, date.fromisoformat(str(r.date)), ac, r.pax, r.cargo_lbs, r.distance_nm)
         res = simulate(t, modules, n=n, seed=base_seed + i, margin=margin)
-        rows.append(dict(actual=r.actual_cost, quote=res.total, **res.percentiles))
+        rows.append(dict(actual=r.actual_cost, quote=res.quote, **res.percentiles))
     return pd.DataFrame(rows)
 
 def coverage_stats(bt_df):
