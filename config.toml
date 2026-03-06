@@ -17,13 +17,18 @@ into_plane_fee_range = [1.25, 1.50]
 delay_prob = 0.20
 mean_delay_hrs = 1.2
 delay_std = 0.9
+operator_cost_fraction = 0.25
 
 [fbo_events]
 event_prob = 0.25
-mega_fee_range = [10_000, 30_000]
-major_fee_range = [5_000, 15_000]
-local_fee_range = [1_000, 5_000]
-standard_fee_range = [60, 500]
+mega_fee_range   = [10_000, 30_000]
+major_fee_range  = [5_000,  15_000]
+local_fee_range  = [1_000,   5_000]
+standard_fee_range = [60,      500]
+mega_prob     = 0.05
+major_prob    = 0.15
+local_prob    = 0.40
+standard_prob = 0.40
 
 [deadhead]
 sell_probability_default = 0.30
