@@ -2,6 +2,16 @@ import numpy as np
 from skyprice.core import PricingResult
 from skyprice.risks.fuel import FuelRisk
 
+def _validate_trip(trip):
+    ac = trip.aircraft
+    flight_hrs = trip.distance_nm / ac.cruise_ktas
+    max_fuel = ac.fuel_capacity_gal * 0.95
+    fuel_needed = flight_hrs * ac.fuel_burn_gph
+    if fuel_needed > max_fuel:
+        raise ValueError(f"{ac.name} needs {fuel_needed:.0f}gal for {trip.distance_nm:.0f}nm but capacity is {ac.fuel_capacity_gal:.0f}gal — fuel stop required")
+    if trip.cargo_weight_lbs > ac.max_payload_lbs:
+        raise ValueError(f"Cargo {trip.cargo_weight_lbs:.0f}lbs exceeds {ac.name} max payload {ac.max_payload_lbs:.0f}lbs")
+
 def base_cost(trip, quoted_per_gal=8.075):
     "Compute deterministic base cost: flight time + all-in quoted fuel cost"
     ac = trip.aircraft
@@ -10,6 +20,7 @@ def base_cost(trip, quoted_per_gal=8.075):
 
 def simulate(trip, risk_modules, n=10_000, seed=42, margin=0.12):
     "Run Monte Carlo simulation across all risk modules"
+    _validate_trip(trip)
     rng = np.random.default_rng(seed)
     fuel = next((m for m in risk_modules if isinstance(m, FuelRisk)), None)
     qpg = (fuel.base_price + np.mean(fuel.flowage_range) + np.mean(fuel.into_plane_range)) if fuel else 8.075
