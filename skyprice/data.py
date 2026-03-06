@@ -44,6 +44,7 @@ def build_risk_modules(cfg=None, eia_key=None):
     fc, wc, ec, dc = cfg["fuel"], cfg["weather"], cfg["fbo_events"], cfg["deadhead"]
     spot = fetch_jeta_spot(eia_key, fc["spot_price_fallback"]) if eia_key else fc["spot_price_fallback"]
     base_price = spot + fc["fbo_markup_per_gallon"]
+    quoted_per_gal = base_price + np.mean(fc["flowage_fee_range"]) + np.mean(fc["into_plane_fee_range"])
     zones = airport_zones()
     seasonal = wc.get("seasonal_multipliers", {})
     fee_ranges = dict(
@@ -58,7 +59,7 @@ def build_risk_modules(cfg=None, eia_key=None):
                     seasonal_multipliers=seasonal, airport_zones=zones,
                     operator_cost_fraction=wc["operator_cost_fraction"]),
         FBOEventRisk(ec["event_prob"], fee_ranges),
-        DeadheadRisk(dc["sell_probability_default"])]
+        DeadheadRisk(dc["sell_probability_default"], fuel_price_per_gal=quoted_per_gal)]
 
 def fetch_jeta_spot(api_key, fallback=2.50):
     "Fetch latest weekly jet-A spot price from EIA; returns fallback on failure"
