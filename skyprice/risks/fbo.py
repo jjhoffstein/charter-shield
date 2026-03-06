@@ -18,12 +18,13 @@ EVENT_WINDOWS = [
 ]
 
 def _event_prob(d, base_prob):
-    "Return elevated event_prob if date falls in a known high-traffic window, else base_prob"
+    "Return max event_prob across all matching high-traffic windows, else base_prob"
+    best = base_prob
     for start, end, prob, *_ in EVENT_WINDOWS:
         s = date(d.year, *start)
         e = date(d.year, *end) if end[0] >= start[0] else date(d.year + 1, *end)
-        if s <= d <= e: return max(prob, base_prob)
-    return base_prob
+        if s <= d <= e: best = max(best, prob)
+    return best
 
 class FBOEventRisk(RiskModule):
     "Models risk of FBO special event surcharges, with date-aware event probability"
