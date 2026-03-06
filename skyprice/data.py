@@ -84,6 +84,6 @@ def generate_historical_trips(ac_lookup, modules, n=200, seed=42):
             cargo = round(float(rng.uniform(0, 300)), 1)
             dt = date(2024, int(rng.integers(1, 13)), int(rng.integers(1, 28)))
             res = simulate(Trip(o, d, dt, ac, pax, cargo, dist), modules, n=1000, seed=int(rng.integers(1_000_000)))
-            actual = res.percentiles["p50"] * float(rng.lognormal(0, 0.15))
+            actual = float(rng.choice(res.distribution))
             rows.append(dict(origin=o, destination=d, date=dt, aircraft=name, pax=pax, cargo_lbs=cargo, distance_nm=dist, actual_cost=round(actual, 2)))
     return pd.DataFrame(rows)
