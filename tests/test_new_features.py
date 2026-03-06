@@ -26,7 +26,7 @@ def test_deadhead_uses_home_base():
 
 def test_fuel_risk_delta_centered_on_zero():
     rng = np.random.default_rng(42)
-    f = FuelRisk(base_price=6.50, volatility=0.01, flowage_range=(0.20,0.20), into_plane_range=(1.375,1.375))
+    f = FuelRisk(base_price=6.25, volatility=0.01, flowage_range=(0.20,0.20), into_plane_range=(1.375,1.375))
     samples = [f.sample(_trip(), rng) for _ in range(5000)]
     assert abs(np.mean(samples)) < 50
 
@@ -45,7 +45,7 @@ def test_risk_distributions_populated():
 
 def test_risk_distributions_ordered():
     r = simulate(_trip(), [FuelRisk(), WeatherRisk(), DeadheadRisk()], n=1000)
-    for v in r.risk_distributions.values(): assert v["p10"] <= v["mean"] or v["p10"] <= v["p90"]
+    for v in r.risk_distributions.values(): assert v["p10"] <= v["mean"] <= v["p90"]
 
 def test_generate_historical_trips():
     ac_lookup = {"Phenom 300": _phenom()}

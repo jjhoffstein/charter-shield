@@ -4,7 +4,7 @@ from skyprice.data import distance_nm
 
 class DeadheadRisk(RiskModule):
     "Models cost of empty repositioning legs using actual home-base distances"
-    def __init__(self, sell_prob=0.35):
+    def __init__(self, sell_prob=0.30):
         self.sell_prob = sell_prob
 
     def sample(self, trip, rng) -> float:

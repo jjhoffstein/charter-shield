@@ -1,14 +1,17 @@
 import tomllib, pandas as pd, numpy as np
 from datetime import date
+from pathlib import Path
 from skyprice.core import haversine_nm
 
-_airports = None
+_ROOT = Path(__file__).parent.parent
+_airports_cache = {}
 
-def load_airports(path="data/airports.csv"):
+def load_airports(path=None):
     "Load airport database and index by ICAO code"
-    global _airports
-    if _airports is None: _airports = pd.read_csv(path).set_index("icao")
-    return _airports
+    p = Path(path) if path else _ROOT / "data/airports.csv"
+    key = str(p.resolve())
+    if key not in _airports_cache: _airports_cache[key] = pd.read_csv(p).set_index("icao")
+    return _airports_cache[key]
 
 def get_airport(icao):
     "Look up airport by ICAO code"
@@ -21,9 +24,10 @@ def distance_nm(origin, dest):
     a, b = get_airport(origin), get_airport(dest)
     return haversine_nm(a.lat, a.lon, b.lat, b.lon)
 
-def load_config(path="config.toml"):
+def load_config(path=None):
     "Load configuration from TOML file"
-    with open(path, "rb") as f: return tomllib.load(f)
+    p = Path(path) if path else _ROOT / "config.toml"
+    with open(p, "rb") as f: return tomllib.load(f)
 
 def airport_zones(airports_df=None):
     "Build ICAO -> weather_zone lookup dict"
@@ -41,9 +45,9 @@ def build_risk_modules(cfg=None, eia_key=None):
     spot = fetch_jeta_spot(eia_key, fc["spot_price_fallback"]) if eia_key else fc["spot_price_fallback"]
     base_price = spot + fc["fbo_markup_per_gallon"]
     fee_ranges = dict(
-        mega=(ec["mega_fee_range"][0],   ec["mega_fee_range"][1],   ec["mega_prob"]),
-        major=(ec["major_fee_range"][0], ec["major_fee_range"][1],  ec["major_prob"]),
-        local=(ec["local_fee_range"][0], ec["local_fee_range"][1],  ec["local_prob"]),
+        mega=(ec["mega_fee_range"][0],     ec["mega_fee_range"][1],     ec["mega_prob"]),
+        major=(ec["major_fee_range"][0],   ec["major_fee_range"][1],    ec["major_prob"]),
+        local=(ec["local_fee_range"][0],   ec["local_fee_range"][1],    ec["local_prob"]),
         standard=(ec["standard_fee_range"][0], ec["standard_fee_range"][1], ec["standard_prob"]))
     return [
         FuelRisk(base_price, fc["volatility_pct"], tuple(fc["flowage_fee_range"]), tuple(fc["into_plane_fee_range"])),

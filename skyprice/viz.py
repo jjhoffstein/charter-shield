@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
-from skyprice.engine import base_cost
 from skyprice.data import load_config
 
 _RISK_LABELS = dict(FuelRisk="Fuel variance", WeatherRisk="Weather delays",
@@ -10,10 +9,9 @@ _RISK_LABELS = dict(FuelRisk="Fuel variance", WeatherRisk="Weather delays",
 def narrate(trip, res):
     "Return plain-English pricing narrative for a charter quote"
     cfg = load_config()
-    margin = cfg.get('margin', 0.12)
+    margin = cfg["pricing"]["target_margin"]
     flight_hrs = trip.distance_nm / trip.aircraft.cruise_ktas
-    base = base_cost(trip)
-    parts = [f"Base flight: {flight_hrs:.1f} hrs at ${trip.aircraft.hourly_rate:,}/hr block rate = ${base:,.0f}."]
+    parts = [f"Base flight: {flight_hrs:.1f} hrs at ${trip.aircraft.hourly_rate:,}/hr block rate = ${res.base_cost:,.0f}."]
     for name, mean in res.risk_premiums.items():
         parts.append(f"{_RISK_LABELS.get(name, name)} adds ~${mean:,.0f} on average.")
     parts.append(f"90th-percentile total cost: ${res.p90:,.0f}.")

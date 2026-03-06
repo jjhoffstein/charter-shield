@@ -3,7 +3,7 @@ from skyprice.risks.base import RiskModule
 
 class FuelRisk(RiskModule):
     "Models fuel price volatility and destination markup risk"
-    def __init__(self, base_price=6.50, volatility=0.15, flowage_range=(0.10, 0.30), into_plane_range=(1.25, 1.50)):
+    def __init__(self, base_price=6.25, volatility=0.15, flowage_range=(0.10, 0.30), into_plane_range=(1.25, 1.50)):
         self.base_price, self.volatility = base_price, volatility
         self.flowage_range, self.into_plane_range = flowage_range, into_plane_range
 
