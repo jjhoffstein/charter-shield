@@ -44,22 +44,19 @@ def build_risk_modules(cfg=None, eia_key=None):
     fc, wc, ec, dc = cfg["fuel"], cfg["weather"], cfg["fbo_events"], cfg["deadhead"]
     spot = fetch_jeta_spot(eia_key, fc["spot_price_fallback"]) if eia_key else fc["spot_price_fallback"]
     base_price = spot + fc["fbo_markup_per_gallon"]
-    quoted_per_gal = base_price + np.mean(fc["flowage_fee_range"]) + np.mean(fc["into_plane_fee_range"])
-    zones = airport_zones()
-    seasonal = wc.get("seasonal_multipliers", {})
+    qpg = base_price + np.mean(fc["flowage_fee_range"]) + np.mean(fc["into_plane_fee_range"])
     fee_ranges = dict(
-        mega=(ec["mega_fee_range"][0], ec["mega_fee_range"][1], ec["mega_prob"]),
-        major=(ec["major_fee_range"][0], ec["major_fee_range"][1], ec["major_prob"]),
-        local=(ec["local_fee_range"][0], ec["local_fee_range"][1], ec["local_prob"]),
+        mega=(ec["mega_fee_range"][0],     ec["mega_fee_range"][1],     ec["mega_prob"]),
+        major=(ec["major_fee_range"][0],   ec["major_fee_range"][1],    ec["major_prob"]),
+        local=(ec["local_fee_range"][0],   ec["local_fee_range"][1],    ec["local_prob"]),
         standard=(ec["standard_fee_range"][0], ec["standard_fee_range"][1], ec["standard_prob"]))
     return [
-        FuelRisk(base_price, fc["volatility_pct"], tuple(fc["flowage_fee_range"]), tuple(fc["into_plane_fee_range"]),
-                 burn_volatility=fc.get("burn_volatility", 0.04), airport_zones=zones, seasonal_multipliers=seasonal),
+        FuelRisk(base_price, fc["volatility_pct"], tuple(fc["flowage_fee_range"]), tuple(fc["into_plane_fee_range"])),
         WeatherRisk(wc["delay_prob"], wc["mean_delay_hrs"], wc["delay_std"],
-                    seasonal_multipliers=seasonal, airport_zones=zones,
+                    seasonal_multipliers=wc.get("seasonal_multipliers"), airport_zones=airport_zones(),
                     operator_cost_fraction=wc["operator_cost_fraction"]),
         FBOEventRisk(ec["event_prob"], fee_ranges),
-        DeadheadRisk(dc["sell_probability_default"], fuel_price_per_gal=quoted_per_gal)]
+        DeadheadRisk(dc["sell_probability_default"], qpg)]
 
 def fetch_jeta_spot(api_key, fallback=2.50):
     "Fetch latest weekly jet-A spot price from EIA; returns fallback on failure"
