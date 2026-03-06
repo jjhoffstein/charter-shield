@@ -1,31 +1,72 @@
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import numpy as np
+
+def plot_waterfall(result, title=None):
+    "Waterfall chart with per-module p10-p90 uncertainty ranges"
+    modules = list(result.risk_distributions.keys())
+    labels = ["Base Cost"] + [m.replace("Risk","") for m in modules] + ["Total Quote"]
+    means = [result.base_cost] + [result.risk_distributions[m]["mean"] for m in modules]
+    p10s  = [None] + [result.risk_distributions[m]["p10"] for m in modules]
+    p90s  = [None] + [result.risk_distributions[m]["p90"] for m in modules]
+    cumulative = [sum(means[:i+1]) for i in range(len(means))]
+    bottoms = [0] + cumulative[:-1]
+    colors = ["#2196F3"] + ["#FF7043","#FF9800","#AB47BC","#26A69A"][:len(modules)]
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    for i, (b, m, lo, hi, c, l) in enumerate(zip(bottoms, means, p10s, p90s, colors, labels[:-1])):
+        ax.bar(i, max(m, 200), bottom=b, color=c, edgecolor="white", width=0.6, alpha=0.9)
+        if lo is not None:
+            ax.errorbar(i, b + m, yerr=[[m - lo], [hi - m]], fmt="none", color="black", capsize=6, linewidth=1.5)
+        ypos = b + m/2 if m > 1000 else b + m + 800
+        ax.text(i, ypos, f"${m:,.0f}", ha="center", va="center", fontsize=9,
+                fontweight="bold", color="white" if m > 1000 else "black")
+
+    ax.bar(len(means), result.total, color="#2E7D32", edgecolor="white", width=0.6, alpha=0.9)
+    ax.text(len(means), result.total/2, f"${result.total:,.0f}", ha="center", va="center",
+            fontsize=10, fontweight="bold", color="white")
+
+    ax.set_xticks(range(len(labels))); ax.set_xticklabels(labels, rotation=20, ha="right", fontsize=11)
+    ax.set_ylabel("Cost ($)", fontsize=11); ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x,_: f"${x:,.0f}"))
+    ax.set_title(title or f"Risk-Adjusted Pricing Waterfall  |  Quote: ${result.total:,.0f}", fontsize=13, fontweight="bold")
+    ax.spines[["top","right"]].set_visible(False)
+    note = mpatches.Patch(color="none", label="Error bars = p10–p90 range")
+    ax.legend(handles=[note], fontsize=9, frameon=False)
+    fig.tight_layout()
+    return fig
+
+def plot_calibration(bt_df):
+    "Backtest calibration: actual coverage vs target at each percentile"
+    pcts = ["p50","p75","p90","p95","p99"]
+    targets = [0.50, 0.75, 0.90, 0.95, 0.99]
+    actual = [(bt_df.actual <= bt_df[p]).mean() for p in pcts]
+    x = np.arange(len(pcts))
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    bars = ax.bar(x, actual, width=0.5, color=["#4CAF50" if a >= t else "#F44336" for a,t in zip(actual,targets)], alpha=0.85, edgecolor="white")
+    ax.plot(x, targets, "o--", color="#1565C0", linewidth=2, markersize=7, label="Target coverage", zorder=5)
+    for i, (a, t) in enumerate(zip(actual, targets)):
+        ax.text(i, a + 0.01, f"{a:.0%}", ha="center", va="bottom", fontsize=10, fontweight="bold")
+    ax.set_xticks(x); ax.set_xticklabels(pcts, fontsize=11)
+    ax.set_ylabel("Fraction of actuals ≤ percentile quote", fontsize=11)
+    ax.set_ylim(0, 1.12); ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x,_: f"{x:.0%}"))
+    ax.set_title("Backtest Calibration: Does the Model Price Accurately?", fontsize=13, fontweight="bold")
+    ax.legend(fontsize=10, frameon=False)
+    ax.spines[["top","right"]].set_visible(False)
+    fig.tight_layout()
+    return fig
 
 def plot_distribution(result, title="Charter Cost Distribution"):
-    "Plot cost distribution with percentile lines"
+    "Plot cost distribution with percentile lines and quote marker"
     fig, ax = plt.subplots(figsize=(10, 5))
-    ax.hist(result.distribution, bins=80, alpha=0.7, color="steelblue", edgecolor="white")
-    colors = dict(p50="green", p75="orange", p90="red", p95="darkred", p99="purple")
+    ax.hist(result.distribution, bins=80, alpha=0.7, color="#2196F3", edgecolor="white")
+    colors = dict(p50="#4CAF50", p75="#FF9800", p90="#F44336", p95="#880E4F", p99="#4A148C")
     for k, v in result.percentiles.items():
         ax.axvline(v, color=colors[k], linestyle="--", linewidth=1.5, label=f"{k}: ${v:,.0f}")
     ax.axvline(result.total, color="black", linewidth=2.5, label=f"Quote: ${result.total:,.0f}")
-    ax.set_xlabel("Total Trip Cost ($)"); ax.set_ylabel("Frequency"); ax.set_title(title)
-    ax.legend(); fig.tight_layout()
-    return fig
-
-def plot_waterfall(result):
-    "Risk factor waterfall chart"
-    fig, ax = plt.subplots(figsize=(10, 5))
-    labels = ["Base Cost"] + list(result.risk_premiums.keys()) + ["Total Quote"]
-    vals = [result.base_cost] + list(result.risk_premiums.values())
-    cumulative = [sum(vals[:i+1]) for i in range(len(vals))]
-    bottoms = [0] + cumulative[:-1]
-    colors = ["steelblue"] + ["coral"] * len(result.risk_premiums)
-    for i, (b, v, c, l) in enumerate(zip(bottoms, vals, colors, labels[:-1])):
-        ax.bar(i, v, bottom=b, color=c, edgecolor="white", width=0.6)
-        ax.text(i, b + v/2, f"${v:,.0f}", ha="center", va="center", fontweight="bold", fontsize=9)
-    ax.bar(len(vals), result.total, color="darkgreen", edgecolor="white", width=0.6)
-    ax.text(len(vals), result.total/2, f"${result.total:,.0f}", ha="center", va="center", fontweight="bold", fontsize=9, color="white")
-    ax.set_xticks(range(len(labels))); ax.set_xticklabels(labels, rotation=30, ha="right")
-    ax.set_ylabel("Cost ($)"); ax.set_title("Risk-Adjusted Pricing Waterfall")
-    fig.tight_layout()
+    ax.set_xlabel("Total Trip Cost ($)", fontsize=11); ax.set_ylabel("Frequency", fontsize=11)
+    ax.set_title(title, fontsize=13, fontweight="bold")
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x,_: f"${x:,.0f}"))
+    ax.spines[["top","right"]].set_visible(False)
+    ax.legend(fontsize=9); fig.tight_layout()
     return fig
