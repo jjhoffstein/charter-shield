@@ -125,3 +125,40 @@ def plot_distribution(result, title="Charter Cost Distribution"):
     ax.spines[["top","right"]].set_visible(False)
     ax.legend(fontsize=9); fig.tight_layout()
     return fig
+
+def plot_seasonal_calendar(origin="KBOS", dest="KMIA", ac=None, pax=4, cargo=200, n=3000, seed=42):
+    "Stacked monthly quote chart with weather/FBO breakdown and event annotations"
+    from skyprice.backtest import AC_LOOKUP
+    from skyprice.core import Trip
+    from skyprice.risks.fbo import EVENT_WINDOWS
+    from datetime import date
+    if ac is None: ac = AC_LOOKUP["Phenom 300"]
+    nm = distance_nm(origin, dest)
+    month_names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    base_costs, weather_prems, fbo_prems, deadhead_prems = [], [], [], []
+    for m in range(1, 13):
+        t = Trip(origin, dest, date(2025, m, 15), ac, pax, cargo, nm)
+        res = simulate(t, build_risk_modules(), n=n, seed=seed)
+        base_costs.append(res.base_cost); weather_prems.append(res.risk_premiums["WeatherRisk"])
+        fbo_prems.append(res.risk_premiums["FBOEventRisk"]); deadhead_prems.append(res.risk_premiums["DeadheadRisk"])
+    x, bc, dp, wp, fp = np.arange(12), np.array(base_costs), np.array(deadhead_prems), np.array(weather_prems), np.array(fbo_prems)
+    totals = bc + dp + wp + fp
+    fig, ax = plt.subplots(figsize=(13, 7))
+    ax.bar(x, bc, width=0.6, color="#2196F3", edgecolor="white", label="Base cost")
+    ax.bar(x, dp, width=0.6, bottom=bc, color="#26A69A", edgecolor="white", label="Deadhead")
+    ax.bar(x, wp, width=0.6, bottom=bc+dp, color="#FF9800", edgecolor="white", label="Weather")
+    ax.bar(x, fp, width=0.6, bottom=bc+dp+wp, color="#AB47BC", edgecolor="white", label="FBO / Events")
+    baseline_fbo = np.median(fp)
+    event_by_month = {start[0]: name for start, end, prob, name in sorted(EVENT_WINDOWS, key=lambda e: e[2])}
+    for i, (total, fbo) in enumerate(zip(totals, fp)):
+        ax.text(i, total + 150, f"${total/1000:.1f}k", ha="center", va="bottom", fontsize=8, fontweight="bold")
+        if fbo > baseline_fbo * 1.4:
+            ax.text(i, total + 900, event_by_month.get(i+1, ""), ha="center", va="bottom", fontsize=7, color="#6A1B9A", style="italic")
+    ax.set_xticks(x); ax.set_xticklabels(month_names, fontsize=11)
+    ax.set_ylabel("Cost ($)", fontsize=11)
+    ax.set_title(f"Seasonal Pricing Calendar  |  {origin}→{dest}  |  {ac.name}", fontsize=13, fontweight="bold")
+    ax.set_ylim(0, max(totals) * 1.12)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v,_: f"${v:,.0f}"))
+    ax.legend(fontsize=9, frameon=False); ax.spines[["top","right"]].set_visible(False)
+    fig.tight_layout()
+    return fig
