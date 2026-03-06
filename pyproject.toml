@@ -21,3 +21,6 @@ dev = ["pytest", "pytest-cov", "ruff"]
 
 [tool.setuptools.packages.find]
 include = ["skyprice*"]
+
+[tool.coverage.run]
+omit = ["skyprice/api.py", "skyprice/cli.py", "skyprice/viz.py", "skyprice/__main__.py", "skyprice/backtest.py"]
